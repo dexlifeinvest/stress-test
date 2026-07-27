@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>資產配置壓力測試 · Dex 生活投資</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<script>
+/* 開頁前先套用主題，避免閃一下白畫面 */
+(function(){var t='dark';try{t=localStorage.getItem('dex_stress_theme')||'dark';}catch(e){}
+document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');})();
+</script>
+<style>
+/* ── 亮色（預設） ── */
+:root{
+  --bg:#f6f9fd; --surface:#ffffff; --surface2:#eef3fa; --line:#dbe4f0;
+  --text:#17273c; --muted:#647085; --faint:#94a0b2;
+  --accent:#3d8bf5; --accent-bg:#e7f0fe;
+  --red:#d84636; --redD:#b23a2c; --red-bg:#fcecea; --amber:#d98a1f; --amber-bg:#fbf1de;
+  --green:#1f9d63; --green-bg:#e4f5ec; --greenD:#157a4b;
+  --topbar:rgba(246,249,253,.94); --topbar-stress:rgba(250,220,216,.92);
+  --stress-grad:linear-gradient(165deg,#fdecea 0%,#f4b3ab 55%,#ec8b80 100%);
+  --note:#8a5a0f; --glow:rgba(61,139,245,.13); --glow-sm:rgba(61,139,245,.12);
+}
+html{color-scheme:light;}
+/* ── 暗色 ── */
+:root[data-theme="dark"]{
+  --bg:#0d1117; --surface:#161b26; --surface2:#1f2733; --line:#2c3545;
+  --text:#e6edf5; --muted:#94a3b8; --faint:#6b7789;
+  --accent:#4d94f5; --accent-bg:#152941;
+  --red:#e05a4a; --redD:#c44a3a; --red-bg:#3b1d19; --amber:#e0a03c; --amber-bg:#3a2c14;
+  --green:#2fb377; --green-bg:#12301f; --greenD:#5fd39c;
+  --topbar:rgba(13,17,23,.92); --topbar-stress:rgba(42,20,19,.92);
+  --stress-grad:linear-gradient(165deg,#1a1114 0%,#331a19 55%,#4a201c 100%);
+  --note:#e0a03c; --glow:rgba(77,148,245,.22); --glow-sm:rgba(77,148,245,.20);
+}
+html[data-theme="dark"]{color-scheme:dark;}
+*{box-sizing:border-box;}
+body{margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; line-height:1.6; padding:0 16px 24px; transition:background .6s ease, color .3s ease;}
+body.stressed{background:var(--stress-grad);}
+.wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
+.topbar{position:sticky; top:0; z-index:20; background:var(--topbar); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); margin:0 -16px 4px; padding:10px 16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; transition:background .6s ease;}
+body.stressed .topbar{background:var(--topbar-stress);}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand img{width:40px; height:40px; border-radius:8px;}
+.brand b{font-size:16px;}
+.brand span{font-size:12px; color:var(--muted); display:block;}
+.actions{display:flex; gap:8px;}
+#stressBtn{background:var(--red); border:none; color:#fff; border-radius:10px; padding:10px 18px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(216,70,54,.28);}
+#stressBtn:hover{background:var(--redD);}
+#saveBtn{background:var(--accent); border:none; color:#fff; border-radius:10px; padding:10px 14px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;}
+#resetBtn{background:var(--surface2); border:1px solid var(--line); color:var(--muted); border-radius:10px; padding:10px 14px; font-size:14px; cursor:pointer; font-family:inherit;}
+#themeBtn{background:var(--surface2); border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px 14px; font-size:14px; cursor:pointer; font-family:inherit;}
+#themeBtn:hover{border-color:var(--accent); color:var(--accent);}
+#pdfBtn{background:var(--green); border:none; color:#fff; border-radius:10px; padding:10px 14px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;}
+#pdfBtn:hover{background:var(--greenD);}
+#pdfBtn:disabled{opacity:.6; cursor:default;}
+@media print{
+  /* 列印／匯出 PDF 一律用淺色，省墨也好讀（暗色模式下也一樣） */
+  :root,:root[data-theme="dark"]{
+    --bg:#ffffff; --surface:#ffffff; --surface2:#eef3fa; --line:#dbe4f0;
+    --text:#17273c; --muted:#647085; --faint:#94a0b2;
+    --accent:#3d8bf5; --accent-bg:#e7f0fe;
+    --red:#d84636; --redD:#b23a2c; --red-bg:#fcecea; --amber:#d98a1f; --amber-bg:#fbf1de;
+    --green:#1f9d63; --green-bg:#e4f5ec; --greenD:#157a4b;
+    --note:#8a5a0f;
+  }
+  html,html[data-theme="dark"]{color-scheme:light;}
+  *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;}
+  body{background:#fff !important; color:var(--text) !important; padding:0 8px !important;}
+  body.stressed .foot,body.stressed .foot b{color:var(--muted) !important;}
+  body.stressed{background:#fff !important;}
+  .topbar{position:static !important; backdrop-filter:none !important; background:#fff !important; border-bottom:1px solid var(--line);}
+  body.stressed .topbar{background:#fff !important;}
+  .actions{display:none !important;}
+  .card,.metric,.bk{transform:none !important; box-shadow:none !important;}
+  .card{page-break-inside:avoid;}
+  .foot{page-break-inside:avoid;}
+}
+.title h1{font-size:22px; font-weight:700; margin:2px 0 0;}
+.title p{color:var(--muted); font-size:13px; margin:4px 0 0;}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px;}
+.hd{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+.hd i{font-size:20px; color:var(--accent);}
+.hd .t{font-size:16px; font-weight:600;}
+.intro p{margin:0 0 10px; font-size:14px;}
+.intro b{color:var(--text);}
+.why{background:var(--accent-bg); border-radius:10px; padding:12px 14px; font-size:13px; color:var(--text); margin:4px 0 12px;}
+table.crash{width:100%; border-collapse:collapse; font-size:13px; margin-top:6px;}
+table.crash th,table.crash td{border-bottom:1px solid var(--line); padding:7px 6px; text-align:left;}
+table.crash th{color:var(--muted); font-weight:500;}
+table.crash td.d{color:var(--red); font-weight:600; text-align:right;}
+.sec{font-size:12px; color:var(--muted); margin:2px 0 10px;}
+label.f{font-size:12px; color:var(--muted); display:block;}
+input{width:100%; background:var(--surface2); border:1px solid var(--line); border-radius:8px; color:var(--text); padding:8px 10px; font-size:14px; margin-top:4px; font-family:inherit;}
+input:focus{outline:none; border-color:var(--accent);}
+.buckets{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;}
+.bk{border:1px solid var(--line); border-radius:12px; padding:12px 10px; text-align:center; background:var(--surface); transition:border-color .3s, box-shadow .18s ease, transform .18s ease;}
+.bk i{font-size:22px; color:var(--muted);}
+.bk .n{font-size:13px; font-weight:600; margin-top:6px;}
+.bk input{font-size:13px; padding:6px 6px; text-align:center; margin-top:6px;}
+.bk .mv{font-size:15px; font-weight:700; margin-top:6px;}
+.bk .mvOld{font-size:11px; color:var(--faint); text-decoration:line-through;}
+.bk .pas{font-size:11px; color:var(--green); margin-top:6px; padding-top:6px; border-top:1px dashed var(--line);}
+.bk .tag{font-size:10px; color:var(--muted); margin-top:3px;}
+.bk.hit{border-color:var(--red); box-shadow:0 0 0 1px var(--red-bg);}
+.bk.safe{border-color:var(--green);}
+.metrics{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;}
+.metric{background:var(--accent); border-radius:10px; padding:14px; color:#fff;}
+.metric.g{background:var(--green);}
+.metric .k{font-size:12px; color:rgba(255,255,255,.85); margin-bottom:4px;}
+.metric .v{font-size:23px; font-weight:700;}
+.metric .d{font-size:12px; margin-top:3px; color:rgba(255,255,255,.9);}
+#result{display:none;}
+#result.show{display:block;}
+.verdict{border-radius:12px; padding:14px 16px; font-size:14px;}
+.verdict .vt{font-size:16px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:8px;}
+.lesson{background:var(--green-bg); border-radius:10px; padding:12px 14px; font-size:13px; color:var(--greenD); margin-top:10px;}
+.foot{color:var(--faint); font-size:11px; line-height:1.7; text-align:center; padding:6px 0 8px;}
+.foot b{color:var(--muted);}
+.card,.metric{transition:transform .18s ease, box-shadow .18s ease;}
+.card:hover,.metric:hover{transform:scale(1.012); box-shadow:0 6px 22px var(--glow);}
+.bk:hover{transform:scale(1.03); box-shadow:0 4px 16px var(--glow-sm);}
+body.stressed .foot,body.stressed .foot b{color:#ffffff;}
+@media(max-width:560px){ .buckets{grid-template-columns:repeat(2,minmax(0,1fr));} .metrics{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand"><img src="logo.png" alt="Dex 生活投資"><div><b>資產配置壓力測試</b><span>Dex 生活投資 · 撐得住，才敢長抱</span></div></div>
+    <div class="actions">
+      <button id="stressBtn"><i class="ti ti-alert-triangle" style="vertical-align:-2px;"></i> 壓力測試</button>
+      <button id="saveBtn"><i class="ti ti-device-floppy" style="vertical-align:-2px;"></i> 儲存</button>
+      <button id="pdfBtn"><i class="ti ti-file-type-pdf" style="vertical-align:-2px;"></i> 匯出PDF檔</button>
+      <button id="resetBtn"><i class="ti ti-refresh" style="vertical-align:-2px;"></i> 恢復</button>
+      <button id="themeBtn" title="切換亮色／暗色"></button>
+      <span id="savedAt" style="font-size:11px; color:var(--muted); align-self:center;">尚未儲存</span>
+    </div>
+  </div>
+
+  <div class="title">
+    <h1>資產配置壓力測試 <span id="mode" style="font-size:13px; font-weight:500; color:var(--red);"></span></h1>
+    <p>多頭時人人都是股神，股災來了才知道誰穿褲子。先模擬一次，看你撐不撐得住。</p>
+  </div>
+
+  <div class="card intro">
+    <div class="hd"><i class="ti ti-clipboard-check"></i><span class="t">為什麼要做壓力測試？</span></div>
+    <p>品質工程有一個工具叫 <b>FMEA（失效模式與影響分析）</b>——在東西還沒壞之前，先預想「萬一它壞了會怎樣、我承受得住嗎」，提前補強。</p>
+    <p>投資也一樣。<b>牛市裡每個人的配置看起來都很棒</b>，但真正的考驗是——萬一來一次股災或技術性修正，你的資產配置<b>撐不撐得住？</b>會不會因為心理壓力或現金流卡住，被逼著把股票<b>砍在最不好的位置？</b></p>
+    <div class="why">以長期人類文明來看，市場是往上的。我們不怕跌，怕的是<b>一次回調就把你洗出場、砍在阿呆谷</b>。這個工具就是讓你先在安全的地方「彩排」一次大跌，確認你的地基與現金流頂得住，之後真的遇到，你才抱得穩。</div>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:4px;"><b>為什麼壓力測試抓 40%？</b>（有憑有據，非隨便設）</p>
+    <p style="font-size:13px;">回顧台股過去 20 年（約 2006–2026），若剔除日常常態性修正，真正達到「崩盤／重大系統性股災」級別的波段跌幅，平均落在 <b>30%～35%</b>。最極端的黑天鵝是 2008 金融海嘯、逼近 60%；但近年（2010 後）隨法人與長期投資人比例提高，大型股災的波段極限大多壓在 30% 上下。<b>本工具保守抓 40%</b>，寧可測得嚴一點。</p>
+    <table class="crash">
+      <tr><th>年份</th><th>事件</th><th style="text-align:right;">波段跌幅</th></tr>
+      <tr><td>2008</td><td>金融海嘯</td><td class="d">約 -58%</td></tr>
+      <tr><td>2011</td><td>歐債危機</td><td class="d">約 -28%</td></tr>
+      <tr><td>2015</td><td>中國股災／匯改</td><td class="d">約 -28%</td></tr>
+      <tr><td>2020</td><td>COVID 疫情閃崩</td><td class="d">約 -30%</td></tr>
+      <tr><td>2022</td><td>升息通膨衝擊</td><td class="d">約 -32%</td></tr>
+    </table>
+    <p style="font-size:12px; color:var(--faint); margin-top:8px;">跌幅為波段概估、非精準值，僅供理解量級之用。壓測時同步模擬股息縮水至 7 成（修正期公司也可能減配）。</p>
+  </div>
+
+  <div class="card">
+    <div class="hd"><i class="ti ti-wallet"></i><span class="t">第一層 · 你目前的資產配置</span></div>
+    <div class="sec">填入各項目前市值。被動收入只計「配息型 ETF＋高利活存＋USDT＋紀念品」；市值型 ETF 主打價差成長，不計入被動收入。</div>
+    <div class="buckets">
+      <div class="bk" id="bkBase"><i class="ti ti-shield-half"></i><div class="n">緊急預備金</div><input type="number" id="base" min="0" step="1000" placeholder="市值"><div class="mv" id="mvBase">NT$0</div><div class="pas" id="pasBase">被動 NT$0/月</div><div class="tag">高利活存 1.5%</div></div>
+      <div class="bk" id="bkCash"><i class="ti ti-cash"></i><div class="n">現金</div><input type="number" id="cash" min="0" step="1000" placeholder="市值"><div class="mv" id="mvCash">NT$0</div><div class="pas" id="pasCash">被動 NT$0/月</div><div class="tag">高利活存 1.5%</div></div>
+      <div class="bk" id="bkCap"><i class="ti ti-trending-up"></i><div class="n">ETF·市值型</div><input type="number" id="etfCap" min="0" step="1000" placeholder="市值"><div class="mvOld" id="mvCapOld" style="display:none;">NT$0</div><div class="mv" id="mvCap">NT$0</div><div class="pas" style="color:var(--muted);">追求價差成長</div><div class="tag" id="tagCap">不計被動收入</div></div>
+      <div class="bk" id="bkDiv"><i class="ti ti-chart-line"></i><div class="n">ETF·配息型</div><input type="number" id="etfDiv" min="0" step="1000" placeholder="市值"><div class="mvOld" id="mvDivOld" style="display:none;">NT$0</div><div class="mv" id="mvDiv">NT$0</div><div class="pas" id="pasDiv">被動 NT$0/月</div><div class="tag" id="tagDiv">殖利率 8%</div></div>
+      <div class="bk" id="bkMem"><i class="ti ti-gift"></i><div class="n">股東紀念品</div><input type="number" id="mem" min="0" step="1000" placeholder="成本"><label style="display:flex; align-items:center; justify-content:center; gap:4px; font-size:11px; color:var(--muted); margin-top:5px;"><input type="checkbox" id="memOn" style="width:auto; margin:0;"> 參與紀念品術</label><div class="mv" id="mvMem">NT$0</div><div class="pas" id="pasMem">被動 NT$0/月</div><div class="tag">實物回饋（估）</div></div>
+      <div class="bk" id="bkUsdt"><i class="ti ti-coin"></i><div class="n">USDT 理財</div><input type="number" id="usdt" min="0" step="1000" placeholder="市值"><div class="mv" id="mvUsdt">NT$0</div><div class="pas" id="pasUsdt">被動 NT$0/月</div><div class="tag">領息 6%</div></div>
+    </div>
+    <div class="sec" style="margin:12px 0 0;">為了判斷你「撐得住幾個月」，再填一個數字：</div>
+    <label class="f" style="max-width:260px;">每月生活支出<input type="number" id="exp" min="0" step="1000" placeholder="例如 40000"></label>
+    <div class="sec" style="margin:14px 0 0;">若你有做股票質押（選填，沒有就留空——沒質押的人這關直接過）：</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <label class="f">股票總市值（擔保品）<input type="number" id="pledgeMV" min="0" step="1000" placeholder="0"></label>
+      <label class="f">質押借款餘額<input type="number" id="pledgeLoan" min="0" step="1000" placeholder="0"></label>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric" id="mTotal"><div class="k">帳面總市值</div><div class="v" id="totalV">NT$0</div><div class="d" id="totalD">&nbsp;</div></div>
+    <div class="metric" id="mFlow"><div class="k">月被動現金流</div><div class="v" id="flowV">NT$0</div><div class="d" id="flowD">配息／領息，長期照領</div></div>
+  </div>
+
+  <div class="card" id="result">
+    <div class="hd"><i class="ti ti-activity-heartbeat"></i><span class="t">壓力測試結果 · ETF 市值 −40%、股息縮至 7 成</span></div>
+    <div class="verdict" id="verdict"></div>
+    <div id="maintBlock" style="margin-top:12px; border-top:1px solid var(--line); padding-top:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+        <span style="font-size:15px; font-weight:600;"><i class="ti ti-building-bank" style="font-size:18px; vertical-align:-3px; color:var(--muted);"></i> 股票質押 · 壓測後維持率</span>
+        <span id="maintV" style="font-size:20px; font-weight:700;">—</span>
+      </div>
+      <div style="height:10px; background:var(--surface2); border-radius:999px; overflow:hidden;"><div id="maintBar" style="height:100%; width:0%; background:var(--green); border-radius:999px; transition:width .3s;"></div></div>
+      <div id="maintMsg" style="font-size:13px; color:var(--muted); margin-top:8px;"></div>
+    </div>
+    <div id="memNote" style="display:none; margin-top:12px; background:var(--amber-bg); border-radius:10px; padding:12px 14px; font-size:13px; color:var(--note);">🎁 <b>好消息：</b>你有做股東紀念品投資術！就算股災來、帳戶在流血，商品卡、衛生紙、洗碗精、白米照樣一箱箱送到家。市值可以先跌，但你家的衛生紙庫存穩如泰山——至少餓不死，還有面紙可以擦眼淚 😄</div>
+    <div class="lesson">
+      <b>這一課要記住：</b>市值 −40% 是<b>帳面</b>的，不是真的賠掉——只要你不賣、股數不變，配息就算縮水也還有 7 成在進帳。緊急預備金和現金完全沒跟著跌，紀念品照領。撐過這段修正，長期市場會漲回來。<b>真正讓人賠大錢的，從來不是下跌，而是在最低點因為現金流壓力或恐慌而賣出。</b>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>⚠️ 風險與免責</b><br>
+    本工具為財商教育與資產配置的壓力測試示範，<b>非投資建議、非收益保證</b>。所有利率、跌幅與被動收入皆為假設與歷史概估，實際結果因個人本金、標的與市場而異。投資有風險，過去績效不代表未來，股災可能損及本金；請自行評估並為自己的決策負責。<br><br>
+    <b>© Dex 生活投資</b>｜本工具由 Dex 設計，保留一切智慧財產權，未經授權請勿重製、散布或商業使用。資料只存在你的瀏覽器（localStorage），不會上傳。
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='dex_stress_test', TKEY='dex_stress_theme';
+  var fields=['base','cash','etfCap','etfDiv','mem','usdt','exp','pledgeMV','pledgeLoan','memOn'];
+  var R={base:0.015, cash:0.015, div:0.08, mem:0.40, usdt:0.06};
+  var MVDROP=0.6, DIVDROP=0.7;
+  var stressed=false;
+  var fmt=function(n){return 'NT$'+Math.round(n||0).toLocaleString('en-US');};
+  var el=function(id){return document.getElementById(id);};
+  var num=function(id){var v=parseFloat(el(id).value);return isNaN(v)?0:Math.max(0,v);};
+
+  function load(){try{var s=JSON.parse(localStorage.getItem(KEY)||'{}');fields.forEach(function(f){if(s[f]===undefined||s[f]===null)return; if(f==='memOn'){el(f).checked=(s[f]==='1'||s[f]===true);} else {el(f).value=s[f];}}); if(s.__savedAt) el('savedAt').textContent='已儲存 '+s.__savedAt;}catch(e){}}
+  function stamp(){var d=new Date();var p=function(x){return (x<10?'0':'')+x;};return p(d.getMonth()+1)+'/'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
+  function save(withStamp){var s={};fields.forEach(function(f){s[f]=(f==='memOn')?(el(f).checked?'1':'0'):el(f).value;}); if(withStamp){s.__savedAt=stamp(); el('savedAt').textContent='已儲存 '+s.__savedAt;} else {try{var old=JSON.parse(localStorage.getItem(KEY)||'{}'); if(old.__savedAt) s.__savedAt=old.__savedAt;}catch(e){}} try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){}}
+
+  function render(){
+    var base=num('base'),cash=num('cash'),cap=num('etfCap'),div=num('etfDiv'),mem=num('mem'),usdt=num('usdt'),exp=num('exp');
+    var memOn=el('memOn').checked;
+    var capNow=stressed?cap*MVDROP:cap;
+    var divNow=stressed?div*MVDROP:div;
+
+    el('mvBase').textContent=fmt(base);
+    el('mvCash').textContent=fmt(cash);
+    el('mvMem').textContent=fmt(mem);
+    el('mvUsdt').textContent=fmt(usdt);
+    el('mvCap').textContent=fmt(capNow);
+    el('mvDiv').textContent=fmt(divNow);
+
+    if(stressed && cap>0){ el('mvCapOld').style.display='block'; el('mvCapOld').textContent=fmt(cap); el('mvCap').style.color='var(--red)'; el('tagCap').textContent='−40% 壓測'; }
+    else { el('mvCapOld').style.display='none'; el('mvCap').style.color=''; el('tagCap').textContent='不計被動收入'; }
+    if(stressed && div>0){ el('mvDivOld').style.display='block'; el('mvDivOld').textContent=fmt(div); el('mvDiv').style.color='var(--red)'; el('tagDiv').textContent='市值−40%、股息×0.7'; }
+    else { el('mvDivOld').style.display='none'; el('mvDiv').style.color=''; el('tagDiv').textContent='殖利率 8%'; }
+
+    var iBase=base*R.base, iCash=cash*R.cash, iMem=(memOn?mem*R.mem:0), iUsdt=usdt*R.usdt;
+    var iDivN=div*R.div;                       // 配息型 正常年配息
+    var iDivS=div*R.div*DIVDROP;               // 壓測後 縮水
+    var iDivNow=stressed?iDivS:iDivN;
+    el('pasBase').textContent='被動 '+fmt(iBase/12)+'/月';
+    el('pasCash').textContent='被動 '+fmt(iCash/12)+'/月';
+    el('pasMem').textContent=memOn?('被動 '+fmt(iMem/12)+'/月'):'未參與';
+    el('pasUsdt').textContent='被動 '+fmt(iUsdt/12)+'/月';
+    el('pasDiv').textContent='被動 '+fmt(iDivNow/12)+'/月';
+
+    var totalNorm=base+cash+cap+div+mem+usdt;
+    var totalNow=base+cash+capNow+divNow+mem+usdt;
+    var flowNorm=(iBase+iCash+iDivN+iMem+iUsdt)/12;
+    var flowNow=(iBase+iCash+iDivNow+iMem+iUsdt)/12;
+
+    var arw='<i class="ti ti-arrow-down-right" style="font-size:18px; vertical-align:-3px; margin-right:2px;"></i> ';
+    el('totalV').innerHTML=(stressed?arw:'')+fmt(totalNow);
+    el('flowV').innerHTML=(stressed?arw:'')+fmt(flowNow);
+    if(stressed && totalNorm>0){
+      var dropPct=Math.round((1-totalNow/totalNorm)*100);
+      el('totalD').innerHTML='壓測前 '+fmt(totalNorm)+' · 帳面 −'+dropPct+'%';
+      el('flowD').innerHTML='壓測前 '+fmt(flowNorm)+' · 配息縮至 7 成，仍有 '+fmt(flowNow);
+      el('mTotal').style.background='var(--red)';
+      el('mFlow').style.background='var(--red)';
+    } else {
+      el('totalD').innerHTML='&nbsp;';
+      el('flowD').innerHTML='配息／領息，長期照領';
+      el('mTotal').style.background='var(--accent)';
+      el('mFlow').style.background='var(--accent)';
+    }
+
+    document.querySelectorAll('.bk').forEach(function(b){b.classList.remove('hit','safe');});
+    if(stressed){
+      if(cap>0) el('bkCap').classList.add('hit');
+      if(div>0) el('bkDiv').classList.add('hit');
+      if(base>0) el('bkBase').classList.add('safe');
+      if(cash>0) el('bkCash').classList.add('safe');
+      if(mem>0) el('bkMem').classList.add('safe');
+      if(usdt>0) el('bkUsdt').classList.add('safe');
+
+      var buffer=base+cash;
+      var months=exp>0?buffer/exp:0;
+      el('result').classList.add('show');
+      var v=el('verdict'), col, icon, tt, msg;
+      if(exp<=0){
+        col='var(--accent-bg)'; icon='ti-info-circle'; tt='填入每月生活支出，看你撐得住幾個月'; v.style.color='var(--accent)';
+        msg='緊急預備金＋現金＝'+fmt(buffer)+' 是你的緩衝。填入每月生活支出，就能算出這筆緩衝能撐幾個月、判斷你頂不頂得住。';
+      } else if(months>=6 && flowNow>0){
+        col='var(--green-bg)'; icon='ti-circle-check'; tt='撐得住 — 你可以安心長抱'; v.style.color='var(--greenD)';
+        msg='帳面雖然縮水，但緊急預備金＋現金（'+fmt(buffer)+'）＝約 '+months.toFixed(1)+' 個月生活費，加上每月仍有被動現金流 '+fmt(flowNow)+'（配息縮至 7 成但沒歸零）。你完全不需要在低點認賠賣出——抱住，等它漲回來。';
+      } else if(months>=3){
+        col='var(--amber-bg)'; icon='ti-alert-triangle'; tt='有點緊 — 撐得過，但緩衝偏薄'; v.style.color='var(--amber)';
+        msg='緩衝約 '+months.toFixed(1)+' 個月（'+fmt(buffer)+'）勉強撐得過，但偏薄。建議把緊急預備金／現金再補厚到 6 個月，下次修正會更從容、更不容易被情緒逼著賣。';
+      } else {
+        col='var(--red-bg)'; icon='ti-alert-octagon'; tt='危險 — 地基太薄，容易被洗出場'; v.style.color='var(--red)';
+        msg='緩衝只有約 '+months.toFixed(1)+' 個月（'+fmt(buffer)+'）。真的遇到大跌，很可能因為現金流壓力被逼著砍在低點。<b>先把緊急預備金補到至少 3～6 個月，再談開源。</b>先守，才能長抱。';
+      }
+      v.style.background=col;
+      v.innerHTML='<div class="vt"><i class="ti '+icon+'"></i>'+tt+'</div>'+msg;
+
+      var pMV=num('pledgeMV'), pLoan=num('pledgeLoan');
+      if(pLoan>0){
+        var mrN=pMV/pLoan*100, mrS=pMV*MVDROP/pLoan*100;
+        el('maintV').textContent=Math.round(mrS)+'%';
+        el('maintBar').style.width=Math.min(100,mrS/300*100)+'%';
+        var mc,mm;
+        if(mrS>=300){mc='var(--green)'; mm='壓測後維持率 '+Math.round(mrS)+'%（壓測前 '+Math.round(mrN)+'%），安全。就算 −40% 也不會被追繳，可以安穩抱住。';}
+        else if(mrS>=200){mc='var(--amber)'; mm='壓測後維持率 '+Math.round(mrS)+'%（壓測前 '+Math.round(mrN)+'%），留意 — 再跌就要準備補擔保或還款。';}
+        else if(mrS>=166){mc='var(--red)'; mm='壓測後維持率 '+Math.round(mrS)+'%（壓測前 '+Math.round(mrN)+'%），危險！很接近斷頭線，股災時可能被追繳。借款太多了。';}
+        else {mc='var(--red)'; mm='壓測後維持率 '+Math.round(mrS)+'%（壓測前 '+Math.round(mrN)+'%），已跌破斷頭線！這種配置遇到股災會被強制平倉、賣在最低點——這正是質押槓桿最大的風險。';}
+        el('maintV').style.color=mc; el('maintBar').style.background=mc; el('maintMsg').innerHTML=mm;
+      } else {
+        el('maintV').textContent='無質押'; el('maintV').style.color='var(--green)';
+        el('maintBar').style.width='100%'; el('maintBar').style.background='var(--green)';
+        el('maintMsg').innerHTML='你沒有質押，這關直接過 — 沒有斷頭風險。保守、不上槓桿，反而是股災時最大的優勢。';
+      }
+      el('memNote').style.display=memOn?'block':'none';
+    } else {
+      el('memNote').style.display='none';
+      el('result').classList.remove('show');
+    }
+    save(false);
+  }
+
+  // 亮色／暗色切換（記在 localStorage，下次開頁沿用；按「恢復」不會影響主題）
+  function applyTheme(t,store){
+    t=(t==='light')?'light':'dark';
+    document.documentElement.setAttribute('data-theme',t);
+    el('themeBtn').innerHTML=(t==='dark')
+      ? '<i class="ti ti-sun" style="vertical-align:-2px;"></i> 亮色'
+      : '<i class="ti ti-moon" style="vertical-align:-2px;"></i> 暗色';
+    if(store){try{localStorage.setItem(TKEY,t);}catch(e){}}
+  }
+  el('themeBtn').addEventListener('click',function(){
+    applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark',true);
+  });
+  applyTheme(document.documentElement.getAttribute('data-theme'),false);
+
+  fields.forEach(function(f){el(f).addEventListener('input',render); if(f==='memOn') el(f).addEventListener('change',render);});
+  el('saveBtn').addEventListener('click',function(){save(true);});
+  el('pdfBtn').addEventListener('click',function(){
+    // 用瀏覽器內建列印 → 選「另存為 PDF / Save as PDF」，離線、任何情況都不會失敗
+    var d=new Date(), p=function(x){return (x<10?'0':'')+x;};
+    var stamp=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate());
+    var oldTitle=document.title;
+    document.title='資產配置壓力測試_'+stamp;   // 存檔時的預設檔名
+    window.print();
+    setTimeout(function(){document.title=oldTitle;},1000);
+  });
+  el('stressBtn').addEventListener('click',function(){
+    stressed=!stressed;
+    document.body.classList.toggle('stressed',stressed);
+    el('stressBtn').innerHTML=stressed?'<i class="ti ti-arrow-back-up" style="vertical-align:-2px;"></i> 結束壓測':'<i class="ti ti-alert-triangle" style="vertical-align:-2px;"></i> 壓力測試';
+    el('mode').textContent=stressed?'· 股災模擬中（市值−40%、股息×0.7）':'';
+    if(stressed) window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+    render();
+  });
+  el('resetBtn').addEventListener('click',function(){
+    fields.forEach(function(f){ if(f==='memOn') el(f).checked=false; else el(f).value=''; });
+    stressed=false; document.body.classList.remove('stressed');
+    el('stressBtn').innerHTML='<i class="ti ti-alert-triangle" style="vertical-align:-2px;"></i> 壓力測試';
+    el('mode').textContent=''; el('savedAt').textContent='尚未儲存';
+    try{localStorage.removeItem(KEY);}catch(e){}
+    render();
+  });
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
